@@ -61,6 +61,7 @@ import TokenWorker from './token.worker.ts';
  * @ignore
  */
 const lock = new Lock();
+let locks = 0;
 
 /**
  * @ignore
@@ -611,7 +612,12 @@ export default class Auth0Client {
     }
 
     try {
-      await lock.acquireLock(GET_TOKEN_SILENTLY_LOCK_KEY, 5000);
+      let now = Date.now();
+      const acquired = await lock.acquireLock(
+        GET_TOKEN_SILENTLY_LOCK_KEY,
+        5000
+      );
+      locks++;
       // Check the cache a second time, because it may have been populated
       // by a previous call while this call was waiting to acquire the lock.
       if (!ignoreCache) {
@@ -621,21 +627,32 @@ export default class Auth0Client {
         }
       }
 
-      const authResult = this.options.useRefreshTokens
-        ? await this._getTokenUsingRefreshToken(getTokenOptions)
-        : await this._getTokenFromIFrame(getTokenOptions);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(
+        'num locks: ',
+        locks,
+        ', last token acquired: ',
+        acquired,
+        ', ms waited: ',
+        Date.now() - now
+      );
 
-      this.cache.save({ client_id: this.options.client_id, ...authResult });
+      // const authResult = this.options.useRefreshTokens
+      //   ? await this._getTokenUsingRefreshToken(getTokenOptions)
+      //   : await this._getTokenFromIFrame(getTokenOptions);
 
-      this.cookieStorage.save('auth0.is.authenticated', true, {
-        daysUntilExpire: 1
-      });
+      // this.cache.save({ client_id: this.options.client_id, ...authResult });
+      //
+      // this.cookieStorage.save('auth0.is.authenticated', true, {
+      //   daysUntilExpire: 1
+      // });
 
-      return authResult.access_token;
+      return 'foo';
     } catch (e) {
       throw e;
     } finally {
       await lock.releaseLock(GET_TOKEN_SILENTLY_LOCK_KEY);
+      locks--;
     }
   }
 

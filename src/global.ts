@@ -165,6 +165,23 @@ export interface Auth0ClientOptions extends BaseLoginOptions {
    * Defaults to 1.
    */
   sessionCheckExpiryDays?: number;
+
+  /**
+   * Hook to get notified on events occuring inside the SDK.
+   * @example
+   * ```
+   * new Auth0Client({
+   *   onEvent: (eventName: string, payload) => {
+   *     switch (eventName) {
+   *       case: Auth0Client.NEW_TOKEN_RECEIVED:
+   *         console.log(payload.accessToken);
+   *         break;
+   *     }
+   *   }
+   * })
+   * ```
+   */
+  onEvent?: (eventName: string, payload: any) => void;
 }
 
 /**

@@ -45,6 +45,7 @@ import {
   INVALID_REFRESH_TOKEN_ERROR_MESSAGE
 } from '../../src/constants';
 import { GenericError } from '../../src/errors';
+import { Auth0Client } from '../../src';
 
 jest.mock('unfetch');
 jest.mock('es-cookie');
@@ -202,6 +203,25 @@ describe('Auth0Client', () => {
       );
     });
 
+    it('emits the NEW_TOKEN_RECEVED event', async () => {
+      const spyOnEvent = jest.fn();
+      const auth0 = setup({
+        onEvent: spyOnEvent
+      });
+
+      jest.spyOn(<any>utils, 'runIframe').mockResolvedValue({
+        access_token: TEST_ACCESS_TOKEN,
+        state: TEST_STATE,
+        code: TEST_CODE
+      });
+
+      await getTokenSilently(auth0);
+
+      expect(spyOnEvent).toHaveBeenCalledWith(Auth0Client.NEW_TOKEN_RECEIVED, {
+        accessToken: TEST_ACCESS_TOKEN
+      });
+    });
+
     it('calls the token endpoint with the correct params when using refresh tokens', async () => {
       const auth0 = setup({
         useRefreshTokens: true
@@ -227,6 +247,26 @@ describe('Auth0Client', () => {
           'Auth0-Client': btoa(JSON.stringify(DEFAULT_AUTH0_CLIENT))
         }
       );
+    });
+
+    it('emits the NEW_TOKEN_RECEVED event when using refresh tokens', async () => {
+      const spyOnEvent = jest.fn();
+      const auth0 = setup({
+        useRefreshTokens: true,
+        onEvent: spyOnEvent
+      });
+
+      await loginWithRedirect(auth0);
+
+      mockFetch.mockReset();
+
+      await getTokenSilently(auth0, {
+        ignoreCache: true
+      });
+
+      expect(spyOnEvent).toHaveBeenCalledWith(Auth0Client.NEW_TOKEN_RECEIVED, {
+        accessToken: TEST_ACCESS_TOKEN
+      });
     });
 
     it('calls the token endpoint with the correct params when passing redirect uri and using refresh tokens', async () => {

@@ -56,7 +56,8 @@ import {
   OAuthTokenOptions,
   CacheLocation,
   LogoutUrlOptions,
-  User
+  User,
+  TokenEndpointOptions
 } from './global';
 
 // @ts-ignore
@@ -146,6 +147,19 @@ export default class Auth0Client {
 
   cacheLocation: CacheLocation;
   private worker: Worker;
+
+  /**
+   * Emitted whenever a new token is succesfuly retrieved internally in the SDK.
+   *
+   * The payload emitted as part of this event will contain the newly retrieved Access Token.
+   * ```
+   * {
+   *   accessToken: string
+   * }
+   * ```
+   * @event
+   */
+  static NEW_TOKEN_RECEIVED: 'NEW_TOKEN_RECEIVED';
 
   constructor(private options: Auth0ClientOptions) {
     typeof window !== 'undefined' && validateCrypto();
@@ -369,7 +383,7 @@ export default class Auth0Client {
       throw new Error('Invalid state');
     }
 
-    const authResult = await oauthToken(
+    const authResult = await this.getToken(
       {
         audience: params.audience,
         scope: params.scope,
@@ -536,7 +550,7 @@ export default class Auth0Client {
       tokenOptions.redirect_uri = transaction.redirect_uri;
     }
 
-    const authResult = await oauthToken(tokenOptions, this.worker);
+    const authResult = await this.getToken(tokenOptions, this.worker);
 
     const decodedToken = this._verifyIdToken(
       authResult.id_token,
@@ -856,7 +870,7 @@ export default class Auth0Client {
         ...customOptions
       } = options;
 
-      const tokenResult = await oauthToken(
+      const tokenResult = await this.getToken(
         {
           ...this.customOptions,
           ...customOptions,
@@ -936,7 +950,7 @@ export default class Auth0Client {
         : null;
 
     try {
-      tokenResult = await oauthToken(
+      tokenResult = await this.getToken(
         {
           ...this.customOptions,
           ...customOptions,
@@ -976,5 +990,21 @@ export default class Auth0Client {
       scope: options.scope,
       audience: options.audience || 'default'
     };
+  }
+
+  private async getToken(options: TokenEndpointOptions, worker: Worker) {
+    const response = await oauthToken(options, worker);
+
+    this.emitEvent(Auth0Client.NEW_TOKEN_RECEIVED, {
+      accessToken: response.access_token
+    });
+
+    return response;
+  }
+
+  private emitEvent(eventName: string, payload: any) {
+    if (typeof this.options.onEvent === 'function') {
+      this.options.onEvent(eventName, payload);
+    }
   }
 }

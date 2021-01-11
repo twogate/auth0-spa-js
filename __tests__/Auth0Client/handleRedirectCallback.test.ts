@@ -24,6 +24,7 @@ import {
   TEST_USER_ID
 } from '../constants';
 import { Auth0ClientOptions } from '../../src/global';
+import { Auth0Client } from '../../src';
 
 jest.mock('unfetch');
 jest.mock('es-cookie');
@@ -237,6 +238,35 @@ describe('Auth0Client', () => {
 
     const fetchBody = JSON.parse(mockFetch.mock.calls[0][1].body);
     expect(fetchBody.redirect_uri).toBeUndefined();
+  });
+
+  it('emits the NEW_TOKEN_RECEVED event', async () => {
+    window.history.pushState(
+      {},
+      'Test',
+      `#/callback/?code=${TEST_CODE}&state=${TEST_ENCODED_STATE}`
+    );
+
+    mockFetch.mockResolvedValueOnce(
+      fetchResponse(true, {
+        id_token: TEST_ID_TOKEN,
+        refresh_token: TEST_REFRESH_TOKEN,
+        access_token: TEST_ACCESS_TOKEN,
+        expires_in: 86400
+      })
+    );
+    const spyOnEvent = jest.fn();
+
+    const auth0 = setup({
+      onEvent: spyOnEvent
+    });
+
+    await auth0.loginWithRedirect();
+    await auth0.handleRedirectCallback();
+
+    expect(spyOnEvent).toHaveBeenCalledWith(Auth0Client.NEW_TOKEN_RECEIVED, {
+      accessToken: TEST_ACCESS_TOKEN
+    });
   });
 
   describe('when there is a valid query string in a hash', () => {

@@ -34,6 +34,7 @@ import {
   DEFAULT_POPUP_CONFIG_OPTIONS
 } from '../../src/constants';
 import version from '../../src/version';
+import { Auth0Client } from '../../src';
 
 jest.mock('unfetch');
 jest.mock('es-cookie');
@@ -253,6 +254,20 @@ describe('Auth0Client', () => {
           'Auth0-Client': btoa(JSON.stringify(DEFAULT_AUTH0_CLIENT))
         }
       );
+    });
+
+    it('emits the NEW_TOKEN_RECEVED event', async () => {
+      const spyOnEvent = jest.fn();
+      const auth0 = setup({
+        useRefreshTokens: true,
+        onEvent: spyOnEvent
+      });
+
+      await loginWithPopup(auth0);
+
+      expect(spyOnEvent).toHaveBeenCalledWith(Auth0Client.NEW_TOKEN_RECEIVED, {
+        accessToken: TEST_ACCESS_TOKEN
+      });
     });
 
     it('uses default config', async () => {

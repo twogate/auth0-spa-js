@@ -24,7 +24,8 @@ import {
   ClientStorage,
   CookieStorage,
   CookieStorageWithLegacySameSite,
-  SessionStorage
+  SessionStorage,
+  LocalStorage
 } from './storage';
 
 import {
@@ -151,10 +152,7 @@ export default class Auth0Client {
     typeof window !== 'undefined' && validateCrypto();
     this.cacheLocation = options.cacheLocation || CACHE_LOCATION_MEMORY;
 
-    this.cookieStorage =
-      options.legacySameSiteCookie === false
-        ? CookieStorage
-        : CookieStorageWithLegacySameSite;
+    this.cookieStorage = LocalStorage;
 
     this.sessionCheckExpiryDays =
       options.sessionCheckExpiryDays || DEFAULT_SESSION_CHECK_EXPIRY_DAYS;
@@ -827,8 +825,8 @@ export default class Auth0Client {
       nonceIn,
       code_challenge,
       options.redirect_uri ||
-        this.options.redirect_uri ||
-        window.location.origin
+      this.options.redirect_uri ||
+      window.location.origin
     );
 
     const url = this._authorizeUrl({

@@ -103,3 +103,24 @@ export const SessionStorage = {
     sessionStorage.removeItem(key);
   }
 } as ClientStorage;
+
+export const LocalStorage = {
+  get<T extends Object>(key: string) {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    const value = localStorage.getItem(key);
+    if (typeof value === 'undefined') {
+      return;
+    }
+    return <T>JSON.parse(value);
+  },
+
+  save(key: string, value: any, options?: ClientStorageOptions): void {
+    localStorage.setItem(key, JSON.stringify(value));
+  },
+
+  remove(key: string) {
+    localStorage.removeItem(key);
+  }
+} as ClientStorage;

@@ -825,8 +825,8 @@ export default class Auth0Client {
       nonceIn,
       code_challenge,
       options.redirect_uri ||
-      this.options.redirect_uri ||
-      window.location.origin
+        this.options.redirect_uri ||
+        window.location.origin
     );
 
     const url = this._authorizeUrl({
@@ -910,7 +910,10 @@ export default class Auth0Client {
     // and you don't have a refresh token in web worker memory
     // fallback to an iframe.
     if ((!cache || !cache.refresh_token) && !this.worker) {
-      return await this._getTokenFromIFrame(options);
+      // return await this._getTokenFromIFrame(options);
+      this.cache.clear();
+      this.cookieStorage.remove('auth0.is.authenticated');
+      throw new Error('No cached refresh_token');
     }
 
     const redirect_uri =
@@ -960,7 +963,10 @@ export default class Auth0Client {
         (e.message &&
           e.message.indexOf(INVALID_REFRESH_TOKEN_ERROR_MESSAGE) > -1)
       ) {
-        return await this._getTokenFromIFrame(options);
+        this.cache.clear();
+        this.cookieStorage.remove('auth0.is.authenticated');
+        throw new Error('Missing refresh_token');
+        // return await this._getTokenFromIFrame(options);
       }
 
       throw e;

@@ -9,7 +9,8 @@ import {
   runIframe,
   sha256,
   bufferToBase64UrlEncoded,
-  validateCrypto
+  validateCrypto,
+  openPopup
 } from './utils';
 
 import { oauthToken, TokenEndpointResponse } from './api';
@@ -57,7 +58,8 @@ import {
   OAuthTokenOptions,
   CacheLocation,
   LogoutUrlOptions,
-  User
+  User,
+  IdToken
 } from './global';
 
 // @ts-ignore
@@ -316,7 +318,13 @@ export default class Auth0Client {
 
   /**
    * ```js
-   * await auth0.loginWithPopup(options);
+   * try {
+   *  await auth0.loginWithPopup(options);
+   * } catch(e) {
+   *  if (e instanceof PopupCancelledError) {
+   *    // Popup was closed before login completed
+   *  }
+   * }
    * ```
    *
    * Opens a popup with the `/authorize` URL using the parameters
@@ -332,9 +340,16 @@ export default class Auth0Client {
    * @param config
    */
   public async loginWithPopup(
-    options: PopupLoginOptions = {},
-    config: PopupConfigOptions = {}
+    options?: PopupLoginOptions,
+    config?: PopupConfigOptions
   ) {
+    options = options || {};
+    config = config || {};
+
+    if (!config.popup) {
+      config.popup = openPopup('');
+    }
+
     const { ...authorizeOptions } = options;
     const stateIn = encode(createRandomString());
     const nonceIn = encode(createRandomString());
@@ -355,7 +370,9 @@ export default class Auth0Client {
       response_mode: 'web_message'
     });
 
-    const codeResult = await runPopup(url, {
+    config.popup.location.href = url;
+
+    const codeResult = await runPopup({
       ...config,
       timeoutInSeconds:
         config.timeoutInSeconds ||
@@ -417,10 +434,10 @@ export default class Auth0Client {
    * (the SDK stores a corresponding ID Token with every Access Token, and uses the
    * scope and audience to look up the ID Token)
    *
-   * @typeparam TUser The type to return, has to extend {@link User}. Defaults to {@link User} when omitted.
+   * @typeparam TUser The type to return, has to extend {@link User}.
    * @param options
    */
-  public async getUser<TUser extends User = User>(
+  public async getUser<TUser extends User>(
     options: GetUserOptions = {}
   ): Promise<TUser | undefined> {
     const audience = options.audience || this.options.audience || 'default';
@@ -450,7 +467,9 @@ export default class Auth0Client {
    *
    * @param options
    */
-  public async getIdTokenClaims(options: GetIdTokenClaimsOptions = {}) {
+  public async getIdTokenClaims(
+    options: GetIdTokenClaimsOptions = {}
+  ): Promise<IdToken> {
     const audience = options.audience || this.options.audience || 'default';
     const scope = getUniqueScopes(this.defaultScope, this.scope, options.scope);
 
@@ -477,8 +496,9 @@ export default class Auth0Client {
    * @param options
    */
   public async loginWithRedirect(options: RedirectLoginOptions = {}) {
-    const url = await this.buildAuthorizeUrl(options);
-    window.location.assign(url);
+    const { redirectMethod, ...urlOptions } = options;
+    const url = await this.buildAuthorizeUrl(urlOptions);
+    window.location[redirectMethod || 'assign'](url);
   }
 
   /**
